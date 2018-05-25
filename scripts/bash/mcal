@@ -1,0 +1,222 @@
+#!/bin/bash
+
+
+command_input="Input: $0 $*";
+command_log="";
+output_message="";
+
+isNumber(){
+re='^[0-9]+$'
+if [[ $1 =~ $re ]] 
+then
+   par=1;
+else
+   par=0;
+fi
+}
+
+
+isMonthParameter(){
+    if [[ $1 -gt 0 && $1 -lt 13 ]]
+        then isMonth=1;
+    else isMonth=0;
+    fi
+}
+
+
+
+# Transformación de parámetros
+
+# Si el parámetro es un número
+
+# 1 - 12        Se considera el mes.
+# 13 - 49       Se considera un año a partir del 2000.
+# 50 - 99       Se considera un año a partir del 1900.
+# >100          Se considera que es el año.
+
+# Si el parámetro es una cadena de texto
+# Devuelve el número del mes representado por el texto.
+# Se acepten meses en catalán, castellano e inglés.
+# Se especifica como expresiones regulares para que se acepten las
+# abrevaciones y el nombre completo.
+
+# Si el valor no es un número ni una cadena que representa
+# el nombre de un mes, se devuelve -1 para el control de errores.
+
+convertParameter(){
+    par=0
+    isNumber $1 $par
+    if [[ $par = 1 ]]
+    then
+        if [[ $1 -gt 0 && $1 -lt 13 ]] ; then par=$1;
+        elif [[ $1 -gt 12 && $1 -lt 50 ]] ; then par=$((2000 + $1));
+        elif [[ $1 -gt 49 && $1 -lt 100 ]] ; then par=$((1900 + $1));
+        else par=$(($1))
+        fi
+    else
+        case $1 in
+            JAN*|Jan*|jan*|GEN*|Gen*|gen*|ENE*|Ene*|ene*) par=1;;
+            FEB*|Feb*|feb*) par=2;;
+            MAR*|Mar*|mar*) par=3;;
+            APR*|Apr*|apr*|ABR*|Abr*|abr*) par=4;;
+            MAY*|May*|may*|MAI*|Mai*|mai) par=5;;
+            JUN*|Jun*|jun*) par=6;;
+            JUL*|Jul*|jul*) par=7;;
+            AUG*|Aug*|aug*|AGO*|Ago*|ago*) par=8;;
+            SEP*|Sep*|sep*|SET*|Set*|set*) par=9;;
+            OCT*|Oct*|oct*) par=10;;
+            NOV*|Nov*|nov*) par=11;;
+            DEC*|Dec*|dec*|DES*|Des*|des*|DIC*|Dic*|dic*) par=12;;            
+            *) par=-1;;             
+        esac
+        
+    fi
+}
+
+# Mensaje que se muestra al llamar la información del comando
+showHelp(){
+    echo "";
+    echo "Comando creado por ORIOL CARRO";
+    echo "Modifica la llamada al comando cal de Linux";
+    echo "";
+    echo "Paràmetros:";
+    echo "-help --> mensaje actual. Ayuda del comando";
+    echo "-remove --> eliminar fichero de log";
+    echo "";
+    echo "Se pueden pasar 0, 1 o 2 argumentos";
+    echo "";
+    echo "- 0 argumentos";
+    echo "Se muestra el calendario para el mes y año actual";
+    echo "";
+    echo "- 1 argumento.";
+    echo "Si es un mes se muestra información del mes por el año actual.";
+    echo "Si es un año, se muestra todo el año";
+    echo "";
+    echo "- 2 arguntos";
+    echo "Se muestra el calendario para el mes y año indicados";
+    echo "";
+    echo "Otras consideraciones";
+    echo "";
+    echo "--> Meses";
+    echo "Los meses pueden ser valores entre 1 y 12.";
+    echo "También puede ser el nombre del mes en catalán, castellano o inglés.";
+    echo "Pueden ser abreviaturas.";
+    echo "";
+    echo "--> Años";
+    echo "Si el año está entre 13 y 49, se considera que es a partir del año 2000.";
+    echo "Si el año está entre 50 y 99, se considera que es a partir del año 1900.";
+    echo "Un valor entre 1 y 12, se considera un mes, en condiciones generales.";
+    echo "Si es el segundo parámetro, se considera un año a partir del 2000.";
+    echo "";
+
+    command_log="Mostrar la información del comando mcal";
+}
+
+
+# Eliminar ficheros de log o debug
+removeLogs(){
+    [ -e mcal_debug.log ] && rm mcal_debug.log;
+    command_log="Eliminación del fichero de logs";
+}
+
+
+# Inicialización de la fecha actual
+# Cargamos el mes y el año actual por si no los informa el usuario
+CURRENT_MONTH=$(date +'%m');
+CURRENT_YEAR=$(date +'%Y');
+
+
+# Función sin argumentos.
+# Se llama el comando cal para el mes y año actual.
+run_0_args(){
+    cal $CURRENT_MONTH $CURRENT_YEAR;
+    command_log="cal $CURRENT_MONTH $CURRENT_YEAR";
+}
+
+
+# Función para 1 argumento.
+# Se comprueba que la entrada sea un mes o año correcto.
+# Si es un mes, se llama el comando cal para ese mes y el año actual.
+# Si es un año se llama el comando cal pasándole el año indicado.
+run_1_args(){    
+    convertParameter $1 $par;
+    par1=$par;
+
+    if [[ $par1 = -1 ]]
+    then
+        command_log="El parámetro pasado no es correcto. No es un mes ni un año.";
+        output_message=$command_log;
+    else
+        isMonthParameter $par1 $isMonth;
+        if [[ $isMonth = 1 ]] ; then cal $par1 $CURRENT_YEAR; command_log="cal $par1 $CURRENT_YEAR";
+        else cal $par1; command_log="cal $par1";
+        fi
+    fi
+
+}
+
+
+# Función para 2 argumentos.
+# Se comprueba que los dos valores hagan referencia a un mes y un año respectivamente.
+# Si es así, se llama el comando cal con los valores introducidos.
+# En caso contrario, se configuran los mensajes de error.
+run_2_args(){
+    convertParameter $1 $par;
+    par1=$par;
+
+    if [[ $2 -gt 0 && $2 -lt 13 ]] ; then val2=$((2000 + $2));
+    fi
+
+    convertParameter $val2 $par;
+    par2=$par;
+    isMonthParameter $par1 $isMonth;
+    isMonth1=$isMonth;
+    isMonthParameter $par2 $isMonth;
+    isMonth2=$isMonth;  
+
+
+    if [[ $par1 = -1 || $par2 = -1 ]] ; 
+    then 
+        command_log="Alguno de los parámetros no es corecto. No es ni un mes ni un año."; 
+        output_message=$command_log;
+    elif [[ $isMonth1 = 1 && $isMonth2 = 0 ]] ; then cal $par1 $par2; command_log="cal $par1 $par2";
+    else 
+        command_log="Los parámetros no hacen referencia a mes y año respectivamente.";
+        output_message=$command_log;        
+    fi
+
+
+}
+
+
+# Se obtiene el número de argumentos.
+# 0 --> llamada a la función run_0_args
+# 1 --> se comprueba si es un parámetro especial (-) o un mes/año
+    # -help --> llamada a la función showHelp. Información sobre el comando.
+    # -remove --> llamada a la función removeLogs. Eliminar fichero de registro.
+    #  otro valor --> llamada a la función run_1_args
+# 2 --> llamada a la función run_2_args.
+# Otro valor. Se configuran los mensajes de error.
+
+num_args=$#;
+case $num_args in
+    0) run_0_args;;
+    1)  if [[ $1 = "-help" ]] ; then showHelp;
+        elif [[ $1 = "-remove" ]] ; then removeLogs; 
+        else run_1_args $1 $par;
+        fi;;
+    2) run_2_args $1 $2 $par;;
+    *) command_log="No se puede ejecutar. Número de argumentos inválido"; output_message=$command_log;;
+esac
+
+# Se registra en el fichero de log el comando de entrada y
+# la traducción al comando cal o el mensaje de error.
+echo "$command_input" >> mcal_debug.log;
+echo "Comando cal o mensaje: $command_log" >> mcal_debug.log;
+
+
+# Si hay un mensaje para mostrar por pantalla, se enseña
+if [ -n "$output_message" ]; then
+    echo "$output_message";
+fi
+
